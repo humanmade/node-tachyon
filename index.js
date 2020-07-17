@@ -1,20 +1,31 @@
 var sharp = require('sharp'),
 	AWSXRay = require('aws-xray-sdk-core'),
+	fs = require('fs'),
 	path = require('path'),
 	isAnimated = require('animated-gif-detector'),
 	smartcrop = require('smartcrop-sharp'),
 	imageminPngquant = require('imagemin-pngquant'),
 	querystring = require('querystring');
+const { config } = require('process');
 
-const enableTracing = process.env.AWS_XRAY_DAEMON_ADDRESS;
+const localConfigFilename = './lambda-config.json';
+const isLocalConfig = process.env.S3_REGION ? false : true;
+const localConfig = 
+	isLocalConfig && fs.existsSync( localConfigFilename ) ?
+	JSON.parse( fs.readFileSync( localConfigFilename ) ) : {};
+
+const cfg = isLocalConfig ? localConfig : process.env;
+
+const enableTracing = cfg.AWS_XRAY_DAEMON_ADDRESS;
+const authenticatedRequest = !!cfg.S3_AUTHENTICATED_REQUEST ? 
+	cfg.S3_AUTHENTICATED_REQUEST.toLowerCase() == 'true' : false;
+
 let AWS;
 if ( enableTracing ) {
 	AWS = AWSXRay.captureAWS(require('aws-sdk'));
 } else {
 	AWS = require('aws-sdk');
 }
-
-var authenticatedRequest = !!process.env.S3_AUTHENTICATED_REQUEST ? process.env.S3_AUTHENTICATED_REQUEST.toLowerCase() == 'true' : false
 
 var regions = {};
 

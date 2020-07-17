@@ -1,9 +1,29 @@
 var tachyon = require('./index');
 var proxyFile = require('./proxy-file');
+const fs = require('fs');
+const querystring = require('querystring');
+
+const localConfigFilename = './lambda-config.json';
+const isLocalConfig = process.env.S3_REGION ? false : true;
+const localConfig = 
+	isLocalConfig && fs.existsSync( localConfigFilename ) ?
+	JSON.parse( fs.readFileSync( localConfigFilename ) ) : {};
+
+const cfg = isLocalConfig ? localConfig : process.env;
+
+const region = cfg.S3_REGION;
+const bucket = cfg.S3_BUCKET;
 
 exports.handler = function(event, context, callback) {
-	var region = process.env.S3_REGION;
-	var bucket = process.env.S3_BUCKET;
+
+	// adapt request for lambda edge, if no event.path
+	if (!event.path && event.Records && event.Records.length > 0) {
+		let request = event.Records[0].cf.request;
+		event.headers = request.headers;
+		event.path = request.uri;
+		event.queryStringParameters = querystring.parse(request.querystring);
+	}
+
 	var key = decodeURIComponent(event.path.substring(1));
 	key = key.replace( '/uploads/tachyon/', '/uploads/' );
 	var args = event.queryStringParameters || {};
@@ -45,16 +65,32 @@ exports.handler = function(event, context, callback) {
 			// Mage age is the date the URL expires minus the current time.
 			maxAge = Math.round( expires - ( new Date().getTime() / 1000 ) );
 		}
+
 		var resp = {
-			statusCode: 200,
-			headers: {
+			body: Buffer.from(data).toString('base64')
+		};
+		
+		if (isLocalConfig) {
+			// prepare response for cloudfront, origin response
+			resp.headers = {
+				'content-type': [{key:'Content-Type', value: 'image/' + info.format}],
+				'cache-control' : [{key:'Cache-Control', value: `max-age=${ maxAge }`}],
+				'last-modified': [{key:'Last-Modified', value: (new Date()).toUTCString()}]
+			};
+			resp.bodyEncoding = 'base64';
+			resp.status = '200';
+			resp.statusDescription = "OK";
+		} else {
+			// prepare response for API gateway
+			resp.headers = {
 				'Content-Type': 'image/' + info.format,
 				'Cache-Control': `max-age=${ maxAge }`,
-				'Last-Modified': (new Date()).toUTCString(),
-			},
-			body: Buffer.from(data).toString('base64'),
-			isBase64Encoded: true,
-		};
+				'Last-Modified': (new Date()).toUTCString()
+			};
+			resp.statusCode = 200;
+			resp.isBase64Encoded = true;
+		}
+		
 		callback(null, resp);
 
 		data = null;

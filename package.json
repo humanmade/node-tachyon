@@ -16,7 +16,7 @@
   "scripts": {
     "build-node-modules": "rm -R node_modules ; docker run --rm -v `pwd`:/var/task lambci/lambda:build-nodejs10.x npm install",
     "test-file": "docker run --rm -e S3_BUCKET=hmn-uploads-eu -e S3_REGION=eu-west-1 -v `pwd`:/var/task lambci/lambda:nodejs10.x lambda-handler.handler '{\"path\":\"/'$npm_config_path'\", \"headers\":{}}'",
-    "build-zip": "rm lambda.zip; zip -r --exclude='node_modules/aws-sdk/*' --exclude='node_modules/animated-gif-detector/test/*' lambda.zip ./node_modules/ index.js proxy-file.js lambda-handler.js",
+    "build-zip": "rm lambda.zip; zip -r --exclude='node_modules/aws-sdk/*' --exclude='node_modules/animated-gif-detector/test/*' lambda.zip ./node_modules/ index.js proxy-file.js lambda-handler.js lambda-config.json",
     "upload-zip": "aws s3 --region=$npm_config_region cp ./lambda.zip s3://$npm_config_bucket/$npm_config_path",
     "update-function-code": "aws lambda update-function-code --region $npm_config_region --function-name $npm_config_function_name --zip-file fileb://`pwd`/lambda.zip"
   },
