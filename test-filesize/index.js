@@ -22,8 +22,12 @@ const table = new Table({
 		'300px',
 		'700px',
 		'700px webp',
+		'700px avif',
 	],
-	colWidths: [30, 15, 20, 15, 15, 15, 20],
+	style: {
+		compact: true,
+	},
+	colWidths: [15, 15, 20, 10, 10, 10, 15, 15],
 });
 
 // Read in existing features for resizes, so we can detect if image resizing
@@ -43,6 +47,7 @@ async function test() {
 				medium: { w: 300 },
 				large: { w: 700 },
 				webp: { w: 700, webp: true },
+				avif: { w: 700, avif: true },
 			};
 			const promises = await Promise.all(
 				Object.entries(sizes).map(async ([size, args]) => {
@@ -58,25 +63,29 @@ async function test() {
 
 			// Save each one to the file system for viewing.
 			Object.entries(resized).forEach(([size, image]) => {
-				const imageKey = `${imageName}-${size}.${image.info.format}`;
+				const imageKey = `${imageName}-${size}.${image.info.format == 'heif' ? 'avif' : image.info.format }`;
 				fixtures[ imageKey ] = image.data.length;
 				fs.writeFile( `${__dirname}/output/${imageKey}`, image.data, () => {});
 			});
 
 			table.push([
 				imageName,
-				Filesize(imageData.length),
-				Filesize(resized.original.info.size) +
+				Filesize(imageData.length, { round: 0 }),
+				Filesize(resized.original.info.size, { round: 0 }) +
 					' (' +
 					Math.floor(resized.original.info.size / imageData.length * 100) +
 					'%)',
-				Filesize(resized.small.info.size),
-				Filesize(resized.medium.info.size),
-				Filesize(resized.large.info.size),
-				Filesize(resized.webp.info.size) +
+				Filesize(resized.small.info.size, { round: 0 }),
+				Filesize(resized.medium.info.size, { round: 0 }),
+				Filesize(resized.large.info.size, { round: 0 }),
+				Filesize(resized.webp.info.size, { round: 0 }) +
 					' (' +
 					Math.floor(resized.webp.info.size / resized.large.info.size * 100) +
 					'%)',
+				Filesize(resized.avif.info.size, { round: 0 }) +
+				' (' +
+				Math.floor(resized.avif.info.size / resized.large.info.size * 100) +
+				'%)',
 			]);
 
 		})

@@ -217,7 +217,11 @@ module.exports.resizeBuffer = async function(buffer, args, callback) {
 		}
 
 		// allow override of compression quality
-		if (args.webp) {
+		if (args.avif) {
+			image.avif({
+				quality: Math.round( clamp( args.quality, 0, 100 ) ),
+			});
+		} else if (args.webp) {
 			image.webp({
 				quality: Math.round( clamp( args.quality, 0, 100 ) ),
 			});

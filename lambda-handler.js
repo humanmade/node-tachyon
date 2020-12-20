@@ -10,6 +10,9 @@ exports.handler = function(event, context, callback) {
 	if ( typeof args.webp === 'undefined' ) {
 		args.webp = !!(event.headers && event.headers['X-WebP']);
 	}
+	if ( typeof args.avif === 'undefined' ) {
+		args.avif = !!(event.headers && event.headers['X-Avif']);
+	}
 	return tachyon.s3({ region: region, bucket: bucket }, key, args, function(
 		err,
 		data,
