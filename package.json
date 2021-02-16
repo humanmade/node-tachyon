@@ -19,6 +19,9 @@
     "test": "docker run --rm -v `pwd`:/var/task -it --entrypoint='node' lambci/lambda:nodejs10.x /var/task/test-filesize/index.js",
     "update-test-fixtures": "docker run --rm -v `pwd`:/var/task -it --entrypoint='node' lambci/lambda:nodejs10.x /var/task/test-filesize/index.js --update-fixtures",
     "build-zip": "rm lambda.zip; zip -r --exclude='node_modules/aws-sdk/*' --exclude='node_modules/animated-gif-detector/test/*' lambda.zip ./node_modules/ index.js proxy-file.js lambda-handler.js",
+    "build-zip-edge-origin-request": "rm tachyon-origin-request-lambda_*.zip; zip -r --exclude='node_modules/aws-sdk/*' --exclude='node_modules/animated-gif-detector/test/*' tachyon-origin-request-lambda_$(date +%s).zip ./node_modules/ lambda@edge/lib.js lambda@edge/origin-request-handler.js",
+    "build-zip-edge-origin-response": "rm tachyon-origin-response-lambda_*.zip; zip -r --exclude='node_modules/aws-sdk/*' --exclude='node_modules/animated-gif-detector/test/*' tachyon-origin-response-lambda_$(date +%s).zip ./node_modules/ index.js lambda@edge/lib.js lambda@edge/origin-response-handler.js",
+    "build-zip-edge-viewer-request": "rm tachyon-viewer-request-lambda_*.zip; zip tachyon-viewer-request-lambda_$(date +%s).zip lambda@edge/viewer-request-handler.js",
     "upload-zip": "aws s3 --region=$npm_config_region cp ./lambda.zip s3://$npm_config_bucket/$npm_config_path",
     "update-function-code": "aws lambda update-function-code --region $npm_config_region --function-name $npm_config_function_name --zip-file fileb://`pwd`/lambda.zip"
   },
@@ -27,6 +30,8 @@
   "dependencies": {
     "animated-gif-detector": "^1.2.0",
     "imagemin-pngquant": "^8.0.0",
+    "object-hash": "^2.0.3",
+    "query-string": "^6.13.2",
     "sharp": "^0.23.0",
     "smartcrop-sharp": "^2.0.3"
   },
@@ -34,6 +39,14 @@
     "aws-sdk": "^2.276.1",
     "aws-xray-sdk-core": "^2.4.0",
     "cli-table": "^0.3.1",
-    "filesize": "^4.1.2"
+    "eslint": "^7.9.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "filesize": "^4.1.2",
+    "prettier": "^2.1.2"
   }
 }

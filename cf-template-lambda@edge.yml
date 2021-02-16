@@ -1,0 +1,240 @@
+Description: Human Made Tachyon Image Server with Lambda@Edge
+Parameters:
+  NodeTachyonBucket:
+    Type: String
+    Description: The S3 Bucket containing the Lambda code ZIP(s)
+    MinLength: 1
+  NodeOriginRequestLambdaPath:
+    Type: String
+    Description: The path to the Origin Request Lambda code ZIP
+    Default: lambda/node-tachyon/tachyon-origin-request-lambda.zip
+  NodeOriginResponseLambdaPath:
+    Type: String
+    Description: The path to the Origin Response Lambda code ZIP
+    Default: lambda/node-tachyon/tachyon-origin-response-lambda.zip
+  NodeViewerRequestLambdaPath:
+    Type: String
+    Description: The path to the Viewer Request Lambda code ZIP
+    Default: lambda/node-tachyon/tachyon-viewer-request-lambda.zip
+  SSLACMCertificateARN:
+    Type: String
+    Description: SSL ACM Certificate ARN.
+    MinLength: 1
+  Domains:
+    Type: CommaDelimitedList
+    Description: Domain Name(s)
+  UploadsS3Bucket:
+    Type: String
+    Description: The S3 Bucket to resize images from.
+    MinLength: 1
+  TachyonLambdaFunctionMemoryLimit:
+    Type: Number
+    Description: The amount of memory the AWS Tachyon Lambda function will get.
+    Default: 256
+  PrivateS3Bucket:
+    Type: String
+    Description: Wether or not the S3 Bucket will be private.
+    AllowedValues:
+      - 'false'
+      - 'true'
+    Default: 'false'
+
+Resources:
+  OriginRequestLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Role: !GetAtt OriginRequestLambdaFunctionIAMRole.Arn
+      Code:
+        S3Bucket: !Ref NodeTachyonBucket
+        S3Key: !Ref NodeOriginRequestLambdaPath
+      Runtime: nodejs12.x
+      Timeout: '3'
+      MemorySize: '128'
+      Handler: lambda@edge/origin-request-handler.handler
+
+  OriginRequestLambdaFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !GetAtt OriginRequestLambdaFunction.Arn
+
+  OriginRequestLambdaFunctionIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              Service: edgelambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: OriginRequestLambdaFunctionIAMRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource:
+                  - 'arn:aws:logs:*:*:*'
+
+  OriginResponseLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Role: !GetAtt OriginResponseLambdaFunctionIAMRole.Arn
+      Code:
+        S3Bucket: !Ref NodeTachyonBucket
+        S3Key: !Ref NodeOriginResponseLambdaPath
+      Runtime: nodejs12.x
+      Timeout: '30'
+      MemorySize: !Ref TachyonLambdaFunctionMemoryLimit
+      Handler: lambda@edge/origin-response-handler.handler
+
+  OriginResponseLambdaFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !GetAtt OriginResponseLambdaFunction.Arn
+
+  OriginResponseLambdaFunctionIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              Service: edgelambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: OriginResponseLambdaFunctionIAMRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${UploadsS3Bucket}/*'
+              - Effect: Allow
+                Action:
+                  - 's3:DeleteObject'
+                  - 's3:GetObject'
+                  - 's3:GetObjectAcl'
+                  - 's3:PutObject'
+                  - 's3:PutObjectAcl'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${UploadsS3Bucket}/cache/*'
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource:
+                  - 'arn:aws:logs:*:*:*'
+
+  ViewerRequestLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Role: !GetAtt ViewerRequestLambdaFunctionIAMRole.Arn
+      Code:
+        S3Bucket: !Ref NodeTachyonBucket
+        S3Key: !Ref NodeViewerRequestLambdaPath
+      Runtime: nodejs12.x
+      Timeout: '3'
+      MemorySize: '128'
+      Handler: lambda@edge/viewer-request-handler.handler
+
+  ViewerRequestLambdaFunctionVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !GetAtt ViewerRequestLambdaFunction.Arn
+
+  ViewerRequestLambdaFunctionIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+          - Effect: Allow
+            Principal:
+              Service: edgelambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: ViewerRequestLambdaFunctionIAMRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:DescribeLogStreams'
+                Resource:
+                  - 'arn:aws:logs:*:*:*'
+
+  CloudFrontDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Aliases: !Ref Domains
+        DefaultCacheBehavior:
+          # Several fields here like DefaultTTL, MaxTTL & ForwardedValues are deprecated, should investigate further, when time allows
+          # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudfront-distribution-cachebehavior.html
+          AllowedMethods:
+            - HEAD
+            - GET
+          CachedMethods:
+            - HEAD
+            - GET
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            Headers:
+              - X-WebP
+            QueryString: 'true'
+          MinTTL: 0
+          DefaultTTL: 63115201
+          MaxTTL: 63115202
+          TargetOriginId: S3-Proxy
+          ViewerProtocolPolicy: allow-all
+          LambdaFunctionAssociations:
+            - EventType: origin-request
+              LambdaFunctionARN: !Ref OriginRequestLambdaFunctionVersion
+            - EventType: origin-response
+              LambdaFunctionARN: !Ref OriginResponseLambdaFunctionVersion
+            - EventType: viewer-request
+              LambdaFunctionARN: !Ref ViewerRequestLambdaFunctionVersion
+        Enabled: true
+        Origins:
+          - DomainName: !Sub '${UploadsS3Bucket}.s3.amazonaws.com'
+            Id: S3-Proxy
+            OriginCustomHeaders:
+              - HeaderName: X-Env-S3-Bucket
+                HeaderValue: !Ref UploadsS3Bucket
+              - HeaderName: X-Env-S3-Region
+                HeaderValue: !Ref 'AWS::Region'
+              - HeaderName: X-Env-S3-Authenticated-Request
+                HeaderValue: !Ref PrivateS3Bucket
+            S3OriginConfig: {}
+        ViewerCertificate:
+          AcmCertificateArn: !Ref SSLACMCertificateARN
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1
+        HttpVersion: http2

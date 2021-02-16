@@ -1,5 +1,6 @@
 node_modules/
 .idea
 lambda.zip
+tachyon-*.zip
 config.json
 test-filesize/output
